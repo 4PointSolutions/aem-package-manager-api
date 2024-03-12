@@ -115,7 +115,7 @@ public class PackageManagerClient {
 			return this;
 		}
 
-		public PackageManagerBuilder ussr(String ussr) {
+		public PackageManagerBuilder user(String ussr) {
 			aemConfigBuilder.ussr(ussr);
 			return this;
 		}
@@ -133,6 +133,7 @@ public class PackageManagerClient {
 		public PackageManagerClient build() {
 			return new PackageManagerClient(aemConfigBuilder.build());
 		}
+
 	}
 	
 	@SuppressWarnings("serial")
