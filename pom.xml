@@ -33,6 +33,16 @@
 		</repository>
 	</distributionManagement>
 
+	<repositories>
+		<repository>
+			<id>github</id>
+			<url>https://maven.pkg.github.com/4PointSolutions/*</url>
+			<snapshots>
+				<enabled>true</enabled>
+			</snapshots>
+		</repository>
+	</repositories>
+
 	<scm>
 		<developerConnection>scm:git:https://github.com/4PointSolutions/aem-package-manager-api.git</developerConnection>
 	</scm>
