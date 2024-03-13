@@ -38,6 +38,12 @@ public class PackageManagerClient {
 	
 	// List all packages
 	// curl -u <user>:<password> http://<host>:<port>/crx/packmgr/service.jsp?cmd=ls
+	/**
+	 * List all the packages on the AEM instance.
+	 * 
+	 * @return A ListResponse object containing all the data from the response.
+	 * @throws PackageManagerException if a network/IO exception occurs. 
+	 */
 	public ListResponse listPackages() {
 		try {
 			Optional<Response> fromServer = this.listAllPackagesClient.getRequestBuilder()
@@ -53,6 +59,13 @@ public class PackageManagerClient {
 	
 	// Upload a package
 	// curl -u <user>:<password> -F cmd=upload -F force=true -F package=@test.zip http://localhost:4502/crx/packmgr/service/.json
+	/**
+	 * Upload a package to the AEM instance.
+	 * 
+	 * @param packageFilename Name of the package (which can be different than the filename)
+	 * @param file Path to the file that will be uploaded
+	 * @return
+	 */
 	public CommandResponse uploadPackage(String packageFilename, Path file) {
 		try {
 			Optional<Response> fromServer = this.uploadPackageClient.multipartPayloadBuilder()
@@ -67,25 +80,56 @@ public class PackageManagerClient {
 		}
 	}
 
+	/**
+	 * Upload a package. Uses the filename as the package name.
+	 * 
+	 * @param file Path to the file that will be uploaded
+	 * @return Response from the AEM instance
+	 */
+	public CommandResponse uploadPackage(Path file) {
+		return uploadPackage(file.getFileName().toString(), file);
+	}
+
 	// Install a package
 	// curl -u <user>:<password> -F cmd=install http://localhost:4502/crx/packmgr/service/.json/etc/packages/my_packages/test.zip
+	/**
+	 * Install a package.
+	 * 
+	 * @param group group name of the package (as determined in the pom.xml used to create the package)
+	 * @param packageFilename packageFilename (must match ths package filename provided when the package was uploaded)
+	 * @return Response from the AEM instance
+	 */
 	public CommandResponse installPackage(String group, String packageFilename) {
 		return executePackageCommand("install", group, packageFilename);
 	}
 
 	// Uninstall a package
 	// curl -u <user>:<password> -F cmd=uninstall http://localhost:4502/crx/packmgr/service/.json/etc/packages/my_packages/test.zip
+	/**
+	 * Uninstall a package.
+	 * 
+	 * @param group group name of the package (as determined in the pom.xml used to create the package)
+	 * @param packageFilename packageFilename (must match ths package filename provided when the package was uploaded)
+	 * @return Response from the AEM instance
+	 */
 	public CommandResponse uninstallPackage(String group, String packageFilename) {
 		return executePackageCommand("uninstall", group, packageFilename);
 	}
 
 	// Delete a package
 	// curl -u <user>:<password> -F cmd=delete http://localhost:4502/crx/packmgr/service/.json/etc/packages/my_packages/test.zip
+	/**
+	 * Delete a package.
+	 * 
+	 * @param group group name of the package (as determined in the pom.xml used to create the package)
+	 * @param packageFilename packageFilename (must match ths package filename provided when the package was uploaded)
+	 * @return Response from the AEM instance
+	 */
 	public CommandResponse deletePackage(String group, String packageFilename) {
 		return executePackageCommand("delete", group, packageFilename);
 	}
 
-	public CommandResponse executePackageCommand(String command, String group, String packageFilename) {
+	private CommandResponse executePackageCommand(String command, String group, String packageFilename) {
 		try {
 			RestClient restClient = this.commandPackageClient.target("/crx/packmgr/service/.json/etc/packages/" + group + "/" + packageFilename);
 			Optional<Response> fromServer = restClient.multipartPayloadBuilder()
@@ -98,47 +142,105 @@ public class PackageManagerClient {
 		}
 	}
 
+	/**
+	 * Provides a builder object for creating a PackageManagerClient instance.
+	 * 
+	 * @return A PackageManagerBuilder object used for configuring/creating a PackageManagerClient instance.
+	 */
 	public static PackageManagerBuilder builder() {
 		return new PackageManagerBuilder();
 	}
 
+	/**
+	 * Builder object for configuring/creating a PackageManagerClient instance.
+	 * 
+	 * 
+	 */
 	public static class PackageManagerBuilder {
 		private final SimpleAemConfigBuilder aemConfigBuilder = new SimpleAemConfigBuilder();
 		
+		/**
+		 * Set the machine name where the AEM instance resides.
+		 * 
+		 * @param serverName
+		 * @return
+		 */
 		public PackageManagerBuilder serverName(String serverName) {
 			aemConfigBuilder.serverName(serverName);
 			return this;
 		}
 
+		/**
+		 * Set the port that AEM is listening on
+		 * 
+		 * @param port
+		 * @return
+		 */
 		public PackageManagerBuilder port(Integer port) {
 			aemConfigBuilder.port(port);
 			return this;
 		}
 
+		/**
+		 * Set the user that will be used to authenticate with the AEM server.
+		 * 
+		 * @param ussr
+		 * @return
+		 */
 		public PackageManagerBuilder user(String ussr) {
 			aemConfigBuilder.ussr(ussr);
 			return this;
 		}
 
+		/**
+		 * Set the password that will be used to authenticate with the AEM server.
+		 * 
+		 * @param password
+		 * @return
+		 */
 		public PackageManagerBuilder password(String password) {
 			aemConfigBuilder.password(password);
 			return this;
 		}
 
+		/**
+		 * Indicate whether the connection to the AEM server will utilize TLS.
+		 * 
+		 * Note: The certificate used by the AEM server must be trusted.
+		 * 
+		 * @param useSsl true - use https connection, or false - use a regular http connection. 
+		 * @return
+		 */
 		public PackageManagerBuilder useSsl(Boolean useSsl) {
 			aemConfigBuilder.useSsl(useSsl);
 			return this;
 		}
 
+		/**
+		 * Build a PackageManagerClient instance.
+		 * 
+		 * @return new PackageManagerClient instance
+		 */
 		public PackageManagerClient build() {
 			return new PackageManagerClient(aemConfigBuilder.build());
 		}
 
+		/**
+		 * Build a PackageManagerClientEx instance.
+		 * 
+		 * @return new PackageManagerClientEx instance
+		 */
 		public PackageManagerClientEx buildEx() {
 			return PackageManagerClientEx.from(new PackageManagerClient(aemConfigBuilder.build()));
 		}
 	}
 	
+	/**
+	 * Package Manager Exceptions
+	 * 
+	 * All exceptions produced by objects in this library throw this kind of error.
+	 * 
+	 */
 	@SuppressWarnings("serial")
 	public static class PackageManagerException extends RuntimeException {
 
