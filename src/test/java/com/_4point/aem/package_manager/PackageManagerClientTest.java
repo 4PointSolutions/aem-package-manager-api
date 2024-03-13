@@ -3,6 +3,7 @@ package com._4point.aem.package_manager;
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
@@ -31,19 +32,13 @@ class PackageManagerClientTest {
 
 	@Test
 	void testListPackages() throws Exception {
-		stubFor(get(urlPathEqualTo("/crx/packmgr/service.jsp"))
-					.withQueryParam("cmd", equalTo("ls"))
-				.willReturn(
-						okForContentType(ContentType.TEXT_PLAIN.contentType(), Files.readString(SAMPLE_DATA_DIR.resolve("SampleListResponse.xml")))
-						));
+		stubForListPackagesSuccess();
 		assertEquals(322, underTest.listPackages().packages().size());
 	}
 
 	@Test
 	void testUninstallPackage_Success() throws Exception {
-		stubFor(post(urlPathEqualTo("/crx/packmgr/service/.json/etc/packages/" + GROUP + "/" + PACKAGE_NAME))
-				.withMultipartRequestBody(aMultipart("cmd").withBody(equalTo("uninstall")))
-				.willReturn(okForContentType(ContentType.APPLICATION_JSON.contentType(), "{\"success\":true,\"msg\":\"Package uninstalled\"}")));
+		stubForUninstallPackageSuccess();
 		CommandResponse result = underTest.uninstallPackage(GROUP, PACKAGE_NAME);
 		assertAll(
 				()->assertTrue(result.success()),
@@ -51,12 +46,10 @@ class PackageManagerClientTest {
 				()->assertTrue(result.path().isEmpty())
 				);
 	}
-	
+
 	@Test
 	void testUninstallPackage_Failure() throws Exception {
-		stubFor(post(urlPathEqualTo("/crx/packmgr/service/.json/etc/packages/" + GROUP + "/" + PACKAGE_NAME))
-				.withMultipartRequestBody(aMultipart("cmd").withBody(equalTo("uninstall")))
-				.willReturn(okForContentType(ContentType.APPLICATION_JSON.contentType(), "{\"success\":false,\"msg\":\"no package\"}")));
+		stubForUninstallPackageFailure();
 		CommandResponse result = underTest.uninstallPackage(GROUP, PACKAGE_NAME);
 		assertAll(
 				()->assertFalse(result.success()),
@@ -64,12 +57,10 @@ class PackageManagerClientTest {
 				()->assertTrue(result.path().isEmpty())
 				);
 	}
-	
+
 	@Test
 	void testInstallPackage_Success() throws Exception {
-		stubFor(post(urlPathEqualTo("/crx/packmgr/service/.json/etc/packages/" + GROUP + "/" + PACKAGE_NAME))
-				.withMultipartRequestBody(aMultipart("cmd").withBody(equalTo("install")))
-				.willReturn(okForContentType(ContentType.APPLICATION_JSON.contentType(), "{\"success\":true,\"msg\":\"Package installed\"}")));
+		stubForInstallPackageSuccess();
 		CommandResponse result = underTest.installPackage(GROUP, PACKAGE_NAME);
 		assertAll(
 				()->assertTrue(result.success()),
@@ -80,9 +71,7 @@ class PackageManagerClientTest {
 
 	@Test
 	void testInstallPackage_Failure() throws Exception {
-		stubFor(post(urlPathEqualTo("/crx/packmgr/service/.json/etc/packages/" + GROUP + "/" + PACKAGE_NAME))
-				.withMultipartRequestBody(aMultipart("cmd").withBody(equalTo("install")))
-				.willReturn(okForContentType(ContentType.APPLICATION_JSON.contentType(), "{\"success\":false,\"msg\":\"failure\"}")));
+		stubForInstallPackageFailure();
 		CommandResponse result = underTest.installPackage(GROUP, PACKAGE_NAME);
 		assertAll(
 				()->assertFalse(result.success()),
@@ -93,9 +82,7 @@ class PackageManagerClientTest {
 
 	@Test
 	void testDeletePackage_Success() {
-		stubFor(post(urlPathEqualTo("/crx/packmgr/service/.json/etc/packages/" + GROUP + "/" + PACKAGE_NAME))
-				.withMultipartRequestBody(aMultipart("cmd").withBody(equalTo("delete")))
-				.willReturn(okForContentType(ContentType.APPLICATION_JSON.contentType(), "{\"success\":true,\"msg\":\"Package deleted\"}")));
+		stubForDeletePackageSuccess();
 		CommandResponse result = underTest.deletePackage(GROUP, PACKAGE_NAME);
 		assertAll(
 				()->assertTrue(result.success()),
@@ -106,9 +93,7 @@ class PackageManagerClientTest {
 
 	@Test
 	void testDeletePackage_Failure() {
-		stubFor(post(urlPathEqualTo("/crx/packmgr/service/.json/etc/packages/" + GROUP + "/" + PACKAGE_NAME))
-				.withMultipartRequestBody(aMultipart("cmd").withBody(equalTo("delete")))
-				.willReturn(okForContentType(ContentType.APPLICATION_JSON.contentType(), "{\"success\":false,\"msg\":\"failure\"}")));
+		stubForDeletePackageFailure();
 		CommandResponse result = underTest.deletePackage(GROUP, PACKAGE_NAME);
 		assertAll(
 				()->assertFalse(result.success()),
@@ -119,11 +104,7 @@ class PackageManagerClientTest {
 
 	@Test
 	void testUpoadPackage_Success() throws Exception {
-		stubFor(post(urlPathEqualTo("/crx/packmgr/service/.json"))
-				.withMultipartRequestBody(aMultipart("cmd").withBody(equalTo("upload")))
-				.withMultipartRequestBody(aMultipart("force").withBody(equalTo("true")))
-				.withMultipartRequestBody(aMultipart("package").withName(SAMPLE_PACKAGE_FILENAME))
-				.willReturn(okForContentType(ContentType.APPLICATION_JSON.contentType(), "{\"success\":false,\"msg\":\"failure\"}")));
+		stubForUploadPackageSuccess();
 		CommandResponse result = underTest.uploadPackage(PACKAGE_NAME, SAMPLE_DATA_DIR.resolve(SAMPLE_PACKAGE_FILENAME));
 		assertAll(
 				()->assertFalse(result.success()),
@@ -134,16 +115,72 @@ class PackageManagerClientTest {
 
 	@Test
 	void testUpoadPackage_Failure() throws Exception {
-		stubFor(post(urlPathEqualTo("/crx/packmgr/service/.json"))
-				.withMultipartRequestBody(aMultipart("cmd").withBody(equalTo("upload")))
-				.withMultipartRequestBody(aMultipart("force").withBody(equalTo("true")))
-				.withMultipartRequestBody(aMultipart("package").withName(SAMPLE_PACKAGE_FILENAME))
-				.willReturn(okForContentType(ContentType.APPLICATION_JSON.contentType(), "{\"success\":true,\"msg\":\"Package uploaded\",\"path\":\"/etc/packages/fd/export/DownloadedFormsPackage_525101667060900.zip\"}")));
+		stubForUploadPackageFailure();
 		CommandResponse result = underTest.uploadPackage(PACKAGE_NAME, SAMPLE_DATA_DIR.resolve(SAMPLE_PACKAGE_FILENAME));
 		assertAll(
 				()->assertTrue(result.success()),
 				()->assertEquals("Package uploaded", result.msg()),
 				()->assertEquals("/etc/packages/fd/export/DownloadedFormsPackage_525101667060900.zip", result.path().orElseThrow())
 				);
+	}
+
+	public static void stubForListPackagesSuccess() throws IOException {
+		stubFor(get(urlPathEqualTo("/crx/packmgr/service.jsp"))
+					.withQueryParam("cmd", equalTo("ls"))
+				.willReturn(
+						okForContentType(ContentType.TEXT_PLAIN.contentType(), Files.readString(SAMPLE_DATA_DIR.resolve("SampleListResponse.xml")))
+						));
+	}
+
+	public static void stubForUninstallPackageSuccess() {
+		stubFor(post(urlPathEqualTo("/crx/packmgr/service/.json/etc/packages/" + GROUP + "/" + PACKAGE_NAME))
+				.withMultipartRequestBody(aMultipart("cmd").withBody(equalTo("uninstall")))
+				.willReturn(okForContentType(ContentType.APPLICATION_JSON.contentType(), "{\"success\":true,\"msg\":\"Package uninstalled\"}")));
+	}
+	
+	public static void stubForUninstallPackageFailure() {
+		stubFor(post(urlPathEqualTo("/crx/packmgr/service/.json/etc/packages/" + GROUP + "/" + PACKAGE_NAME))
+				.withMultipartRequestBody(aMultipart("cmd").withBody(equalTo("uninstall")))
+				.willReturn(okForContentType(ContentType.APPLICATION_JSON.contentType(), "{\"success\":false,\"msg\":\"no package\"}")));
+	}
+	
+	public static void stubForInstallPackageSuccess() {
+		stubFor(post(urlPathEqualTo("/crx/packmgr/service/.json/etc/packages/" + GROUP + "/" + PACKAGE_NAME))
+				.withMultipartRequestBody(aMultipart("cmd").withBody(equalTo("install")))
+				.willReturn(okForContentType(ContentType.APPLICATION_JSON.contentType(), "{\"success\":true,\"msg\":\"Package installed\"}")));
+	}
+
+	public static void stubForInstallPackageFailure() {
+		stubFor(post(urlPathEqualTo("/crx/packmgr/service/.json/etc/packages/" + GROUP + "/" + PACKAGE_NAME))
+				.withMultipartRequestBody(aMultipart("cmd").withBody(equalTo("install")))
+				.willReturn(okForContentType(ContentType.APPLICATION_JSON.contentType(), "{\"success\":false,\"msg\":\"failure\"}")));
+	}
+
+	public static void stubForDeletePackageSuccess() {
+		stubFor(post(urlPathEqualTo("/crx/packmgr/service/.json/etc/packages/" + GROUP + "/" + PACKAGE_NAME))
+				.withMultipartRequestBody(aMultipart("cmd").withBody(equalTo("delete")))
+				.willReturn(okForContentType(ContentType.APPLICATION_JSON.contentType(), "{\"success\":true,\"msg\":\"Package deleted\"}")));
+	}
+
+	public static void stubForDeletePackageFailure() {
+		stubFor(post(urlPathEqualTo("/crx/packmgr/service/.json/etc/packages/" + GROUP + "/" + PACKAGE_NAME))
+				.withMultipartRequestBody(aMultipart("cmd").withBody(equalTo("delete")))
+				.willReturn(okForContentType(ContentType.APPLICATION_JSON.contentType(), "{\"success\":false,\"msg\":\"failure\"}")));
+	}
+
+	public static void stubForUploadPackageSuccess() {
+		stubFor(post(urlPathEqualTo("/crx/packmgr/service/.json"))
+				.withMultipartRequestBody(aMultipart("cmd").withBody(equalTo("upload")))
+				.withMultipartRequestBody(aMultipart("force").withBody(equalTo("true")))
+				.withMultipartRequestBody(aMultipart("package").withName(SAMPLE_PACKAGE_FILENAME))
+				.willReturn(okForContentType(ContentType.APPLICATION_JSON.contentType(), "{\"success\":false,\"msg\":\"failure\"}")));
+	}
+
+	public static void stubForUploadPackageFailure() {
+		stubFor(post(urlPathEqualTo("/crx/packmgr/service/.json"))
+				.withMultipartRequestBody(aMultipart("cmd").withBody(equalTo("upload")))
+				.withMultipartRequestBody(aMultipart("force").withBody(equalTo("true")))
+				.withMultipartRequestBody(aMultipart("package").withName(SAMPLE_PACKAGE_FILENAME))
+				.willReturn(okForContentType(ContentType.APPLICATION_JSON.contentType(), "{\"success\":true,\"msg\":\"Package uploaded\",\"path\":\"/etc/packages/fd/export/DownloadedFormsPackage_525101667060900.zip\"}")));
 	}
 }
