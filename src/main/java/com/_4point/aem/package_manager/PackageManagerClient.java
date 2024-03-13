@@ -134,23 +134,26 @@ public class PackageManagerClient {
 			return new PackageManagerClient(aemConfigBuilder.build());
 		}
 
+		public PackageManagerClientEx buildEx() {
+			return PackageManagerClientEx.from(new PackageManagerClient(aemConfigBuilder.build()));
+		}
 	}
 	
 	@SuppressWarnings("serial")
 	public static class PackageManagerException extends RuntimeException {
 
-		private PackageManagerException() {
+		PackageManagerException() {
 		}
 
-		private PackageManagerException(String message, Throwable cause) {
+		PackageManagerException(String message, Throwable cause) {
 			super(message, cause);
 		}
 
-		private PackageManagerException(String message) {
+		PackageManagerException(String message) {
 			super(message);
 		}
 
-		private PackageManagerException(Throwable cause) {
+		PackageManagerException(Throwable cause) {
 			super(cause);
 		}
 	}

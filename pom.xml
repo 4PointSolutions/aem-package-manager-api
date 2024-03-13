@@ -22,6 +22,7 @@
 		<mockito.version>5.11.0</mockito.version>
 		<hamcrest.version>2.2</hamcrest.version>
 		<wiremock.version>3.4.2</wiremock.version>
+		<_4point-hamcrest-matchers.version>0.0.1-SNAPSHOT</_4point-hamcrest-matchers.version>
 	</properties>
 
 	<distributionManagement>
@@ -100,6 +101,11 @@
 			<artifactId>wiremock</artifactId>
 			<version>${wiremock.version}</version>
 			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>com._4point.testing</groupId>
+			<artifactId>4point-hamcrest-matchers</artifactId>
+			<version>${_4point-hamcrest-matchers.version}</version>
 		</dependency>
 	</dependencies>
 </project>
