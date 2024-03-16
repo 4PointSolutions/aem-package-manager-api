@@ -93,6 +93,7 @@ public interface RestClient {
 			default <T> Builder addStringVersion(String fieldName, T fieldData) {
 				return fieldData != null ? addIfNotNull(fieldName, fieldData.toString()) : this;
 			}
+			Builder queryParam(String name, String value);
 			MultipartPayload build();
 		}
 	}

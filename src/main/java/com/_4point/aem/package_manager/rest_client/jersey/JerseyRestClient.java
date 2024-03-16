@@ -153,15 +153,22 @@ public class JerseyRestClient implements RestClient {
 	 */
 	private final class JerseyMultipartPayload implements MultipartPayload {
 		private final FormDataMultiPart multipart;
+		private final List<JerseyMultipartPayloadBuilder.QueryParam> queryParams;
 		
-		private JerseyMultipartPayload(FormDataMultiPart multipart) {
+		private JerseyMultipartPayload(FormDataMultiPart multipart, List<JerseyMultipartPayloadBuilder.QueryParam> queryParams) {
 			this.multipart = multipart;
+			this.queryParams = queryParams;
 		}
 
 		@Override
 		public Optional<Response> postToServer(ContentType acceptContentType) throws RestClientException {
 			MediaType acceptMediaType = MediaType.valueOf(acceptContentType.contentType());
-			jakarta.ws.rs.client.Invocation.Builder invokeBuilder = target.request().accept(acceptMediaType);
+			WebTarget localTarget = target;
+			for(var queryParam : queryParams) {
+				localTarget = localTarget.queryParam(queryParam.name, queryParam.value);
+			}
+			jakarta.ws.rs.client.Invocation.Builder invokeBuilder = localTarget.request().accept(acceptMediaType);
+
 //			if (this.correlationIdFn != null) {
 //				invokeBuilder.header(CORRELATION_ID_HTTP_HDR, this.correlationIdFn.get());
 //			}
@@ -185,6 +192,8 @@ public class JerseyRestClient implements RestClient {
 	 * MultipartPayload.Builder implementation code.
 	 */
 	private final class JerseyMultipartPayloadBuilder implements MultipartPayload.Builder {
+		private record QueryParam(String name, String value) {};
+		private List<QueryParam> queryParams = new ArrayList<>();
 		private final FormDataMultiPart multipart = new FormDataMultiPart();
 
 		@Override
@@ -216,10 +225,15 @@ public class JerseyRestClient implements RestClient {
 		}
 		
 		@Override
-		public MultipartPayload build() {
-			return new JerseyMultipartPayload(multipart);
+		public MultipartPayload.Builder queryParam(String name, String value) {
+			queryParams.add(new QueryParam(name, value));
+			return this;
 		}
 
+		@Override
+		public MultipartPayload build() {
+			return new JerseyMultipartPayload(multipart, queryParams);
+		}
 	}
 
 	/*

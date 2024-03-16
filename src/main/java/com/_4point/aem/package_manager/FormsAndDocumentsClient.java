@@ -1,11 +1,17 @@
 package com._4point.aem.package_manager;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
+import java.util.Optional;
 
 import com._4point.aem.package_manager.AemConfig.SimpleAemConfigBuilder;
 import com._4point.aem.package_manager.rest_client.RestClient;
+import com._4point.aem.package_manager.rest_client.RestClient.ContentType;
+import com._4point.aem.package_manager.rest_client.RestClient.Response;
+import com._4point.aem.package_manager.rest_client.RestClient.RestClientException;
 import com._4point.aem.package_manager.rest_client.jersey.JerseyRestClient;
 
 public class FormsAndDocumentsClient {
@@ -21,9 +27,15 @@ public class FormsAndDocumentsClient {
 	
 	
 	public static sealed interface DeleteResponse {
-		
+
 		public static final class DeleteSuccess implements DeleteResponse {
 			
+			private static DeleteSuccess from(String requestStatusString) {
+				return switch (requestStatusString) {
+					case "success"->new DeleteSuccess();
+					default->throw new IllegalArgumentException("Unexpected requestStatus returned from AEM (" + requestStatusString + ")." );
+				};
+			};
 		}
 		
 		public record DeleteError(
@@ -32,17 +44,41 @@ public class FormsAndDocumentsClient {
 				String title,
 				String description,
 				String unresolvedMessage,
-				String messageArgs,
+				List<String> messageArgs,
 				String rootCause
 				) implements DeleteResponse {
 			
-		} ;
+		}
+
+		private static DeleteResponse from(String jsonString) {
+			JsonData json = JsonData.from(jsonString);
+			
+			Optional<String> requestStatus = json.at("/requestStatus");
+			if (requestStatus.isPresent()) {
+				return DeleteSuccess.from(requestStatus.get());
+			} else {
+				// Must be error
+				
+			}
+			// TODO Auto-generated method stub
+			return null;
+		}
+
 	}
 	
 	public DeleteResponse delete(String target) {
-		// TODO:  Implement this.
-		throw new UnsupportedOperationException("Not implemented yet.");
-		
+		try {
+			Response response = contentManagerClient.multipartPayloadBuilder()
+													.add("assetPaths", target)
+													.add("_charset_", "UTF-8")
+													.queryParam("func", "deleteAssets")
+													.build()
+													.postToServer(ContentType.APPLICATION_JSON)
+													.orElseThrow(()->new FormsAndDocumentsException("Error while deleting folder (" + target + "). No content was returned."));
+			return DeleteResponse.from(new String(response.data().readAllBytes()));
+		} catch (RestClientException | IOException | IllegalArgumentException e) {
+			throw new FormsAndDocumentsException("Error while deleting folder (" + target + ").", e);
+		}
 	}
 
 	public record PreviewResponse(String fileId) {};
@@ -69,6 +105,10 @@ public class FormsAndDocumentsClient {
 	public boolean createFolder(String folderName) {
 		// TODO:  Implement this.
 		throw new UnsupportedOperationException("Not implemented yet.");
+	}
+
+	public static FormsAndDocumentsBuilder builder() {
+		return new FormsAndDocumentsBuilder();
 	}
 
 	/**
@@ -179,5 +219,4 @@ public class FormsAndDocumentsClient {
 			super(cause);
 		}
 	}
-
 }
