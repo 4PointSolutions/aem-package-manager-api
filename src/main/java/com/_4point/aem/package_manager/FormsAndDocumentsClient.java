@@ -15,6 +15,13 @@ import com._4point.aem.package_manager.rest_client.RestClient.Response;
 import com._4point.aem.package_manager.rest_client.RestClient.RestClientException;
 import com._4point.aem.package_manager.rest_client.jersey.JerseyRestClient;
 
+/**
+ * FormsAndDocumentsClient performs operations on the objects under Forms And Documents (which is a section of CRX dedicated
+ * to the AEM Forms add-on).
+ * 
+ * It allow someone to upload files (including .zips), delete files and folders and create folders.  
+ * 
+ */
 public class FormsAndDocumentsClient {
 	private final RestClient contentManagerClient;
 	private final JerseyRestClient formsAndDocumentsClient;
@@ -22,11 +29,13 @@ public class FormsAndDocumentsClient {
 	private FormsAndDocumentsClient(AemConfig aemConfig) {
 		this.contentManagerClient = new JerseyRestClient(aemConfig, "/libs/fd/fm/content/manage.json"); // ?func=deleteAssets
 		this.formsAndDocumentsClient = new JerseyRestClient(aemConfig, "/content/dam/formsanddocuments"); 
-//		this.commandPackageClient = new JerseyRestClient(aemConfig, "/libs/fd/fm/content/manage.json"); // func=uploadFormsPreview&folderPath=/content/dam/formsanddocuments&isIE=false
-//		this.uploadPackageClient = new JerseyRestClient(aemConfig, "/crx/packmgr/service/.json");;
 	}
 	
 	
+	/**
+	 * Represents an error returned from AEM
+	 * 
+	 */
 	public record AemError(
 			String code,
 			String type,
@@ -56,6 +65,10 @@ public class FormsAndDocumentsClient {
 		}
 	}
 
+	/**
+	 * Represents a response from asking AEM to delete something.  It can be a DeleteSuccess or AemError.
+	 * 
+	 */
 	public static sealed interface DeleteResponse {
 
 		public static final class DeleteSuccess implements DeleteResponse {
@@ -84,6 +97,12 @@ public class FormsAndDocumentsClient {
 
 	}
 	
+	/**
+	 * Deletes the target file or folder from under the FormsAndDocuments directory.
+	 * 
+	 * @param target file or folder to delete.  The path is relative to the FormsAndDocuments directory.
+	 * @return DeleteResponse indicating the success or failure of the delete operation.
+	 */
 	public DeleteResponse delete(String target) {
 		try {
 			Response response = contentManagerClient.multipartPayloadBuilder()
@@ -99,15 +118,18 @@ public class FormsAndDocumentsClient {
 		}
 	}
 
+	/**
+	 * Represents a response from asking AEM to preview a .zip.  It can be a PreviewSuccess or AemError.
+	 */
 	public static sealed interface PreviewResponse {
 		public record PreviewSuccess(String fileId) implements PreviewResponse {
 	
-			public static Optional<PreviewSuccess> from(JsonData json) {
+			private static Optional<PreviewSuccess> from(JsonData json) {
 				return json.at("/fileId").map(PreviewSuccess::new);
 			}
 		}
 
-		public static PreviewResponse from(String jsonString) {
+		private static PreviewResponse from(String jsonString) {
 			JsonData json = JsonData.from(jsonString);
 
 			return PreviewSuccess.from(json)
@@ -118,7 +140,14 @@ public class FormsAndDocumentsClient {
 		};
 	}
 	
-	// filename, file contents, target location
+	/**
+	 * Previews the contents of a .zip that is being uploaded to a location the under FormsAndDocuments directory..
+	 * 
+	 * @param filename filename
+	 * @param content the bytes of the uploaded file.
+	 * @param targetLocation the location where the file will be unpacked
+	 * @return PreviewResponse indicating the success or failure of the preview operation.
+	 */
 	public PreviewResponse preview(String filename, byte[] content, String targetLocation) {
 		try {
 			Response response = contentManagerClient.multipartPayloadBuilder()
@@ -137,6 +166,13 @@ public class FormsAndDocumentsClient {
 		}
 	}
 
+	/**
+	 * Previews the contents of a .zip that is being uploaded to a location the under FormsAndDocuments directory..
+	 * 
+	 * @param file Path to a file that will be previewed
+	 * @param targetLocation the location where the file will be unpacked
+	 * @return PreviewResponse indicating the success or failure of the preview operation.
+	 */
 	public PreviewResponse preview(Path file, String targetLocation) {
 		try {
 			return preview(file.getFileName().toString(), Files.readAllBytes(file), targetLocation);
@@ -145,15 +181,20 @@ public class FormsAndDocumentsClient {
 		}
 	}
 
+	/**
+	 * Represents a response from asking AEM to upload something.  It can be a UploadSuccess or AemError.
+	 * 
+	 */
 	public static sealed interface UploadResponse {
 		public static final class UploadSuccess implements UploadResponse {
 			private static final UploadSuccess INSTANCE = new UploadSuccess();	// Since this is just a placeholder. we'll make it a singleton.
-			static Optional<UploadSuccess> from(JsonData json) {
+
+			private static Optional<UploadSuccess> from(JsonData json) {
 				return json.at("/lastUploadedAssetPath").map(__->INSTANCE);
 			}
 		}
 
-		public static UploadResponse from(String jsonString) {
+		private static UploadResponse from(String jsonString) {
 			JsonData json = JsonData.from(jsonString);
 		
 			return UploadSuccess.from(json)
@@ -164,6 +205,13 @@ public class FormsAndDocumentsClient {
 		}
 	}
 
+	/**
+	 * Uploads the file that was previously previewed to a location the under FormsAndDocuments directory..
+	 * 
+	 * @param fileId a file id returned by preview operation
+	 * @param targetLocation the location where the file will be uploaded
+	 * @return UploadResponse indicating the success or failure of the upload operation.
+	 */
 	public UploadResponse upload(String fileId, String targetLocation) {
 		try {
 			Response response = contentManagerClient.multipartPayloadBuilder()
@@ -185,6 +233,13 @@ public class FormsAndDocumentsClient {
 		return "/content/dam/formsanddocuments" + (targetLocation.isBlank() || targetLocation.startsWith("/") ? "" : "/") + targetLocation;
 	}
 	
+	/**
+	 * Previews and uploads the file to a location the under FormsAndDocuments directory..
+	 * 
+	 * @param file file that will be uploaded
+	 * @param targetLocation the location where the file will be uploaded
+	 * @return UploadResponse indicating the success or failure of the upload operation.
+	 */
 	public UploadResponse upload(Path file, String targetLocation) {
 		PreviewResponse previewResponse = preview(file, targetLocation);
 		
@@ -194,6 +249,12 @@ public class FormsAndDocumentsClient {
 		};
 	}
 
+	/**
+	 * Previews and uploads the file directly under the FormsAndDocuments directory..
+	 * 
+	 * @param file file that will be uploaded
+	 * @return UploadResponse indicating the success or failure of the upload operation.
+	 */
 	public UploadResponse upload(Path file) {
 		return upload(file, "");
 	}
