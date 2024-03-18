@@ -1,7 +1,6 @@
 package com._4point.aem.package_manager;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -9,6 +8,7 @@ import java.util.NoSuchElementException;
 import java.util.Optional;
 
 import com._4point.aem.package_manager.AemConfig.SimpleAemConfigBuilder;
+import com._4point.aem.package_manager.FormsAndDocumentsClient.PreviewResponse.PreviewSuccess;
 import com._4point.aem.package_manager.rest_client.RestClient;
 import com._4point.aem.package_manager.rest_client.RestClient.ContentType;
 import com._4point.aem.package_manager.rest_client.RestClient.Response;
@@ -27,13 +27,41 @@ public class FormsAndDocumentsClient {
 	}
 	
 	
+	public record AemError(
+			String code,
+			String type,
+			String title,
+			String description,
+			Optional<String> unresolvedMessage,
+			List<String> messageArgs,
+			String rootCause
+			) implements DeleteResponse, PreviewResponse, UploadResponse {
+
+		
+		static Optional<AemError> from(JsonData json) {
+			try {
+				String code = json.at("/code").orElseThrow();
+				String type = json.at("/type").orElseThrow();
+				String title = json.at("/title").orElseThrow();
+				String description = json.at("/description").orElseThrow();
+				Optional<String> unresolvedMessage = json.at("/unresolvedMessage");
+				Optional<String> messageArgs = json.at("/messageArgs/0");
+				String rootCause = json.at("/rootCause").orElseThrow();
+				
+				return Optional.of(new AemError(code, type, title, description, unresolvedMessage, messageArgs.map(List::of).orElse(List.of()), rootCause));
+			} catch (NoSuchElementException e) {
+				// return empty so that we throw an unexpected response Exception.
+				return Optional.empty();
+			}
+		}
+	}
+
 	public static sealed interface DeleteResponse {
 
 		public static final class DeleteSuccess implements DeleteResponse {
 			
 			private static Optional<DeleteResponse> from(JsonData json) {
-				Optional<String> requestStatus = json.at("/requestStatus");
-				return requestStatus.isPresent() ? Optional.of(DeleteSuccess.from(requestStatus.get())) : Optional.empty();
+				return json.at("/requestStatus").map(DeleteSuccess::from);
 			}
 
 			private static DeleteSuccess from(String requestStatusString) {
@@ -44,40 +72,12 @@ public class FormsAndDocumentsClient {
 			};
 		}
 		
-		public record DeleteError(
-				String code,
-				String type,
-				String title,
-				String description,
-				String unresolvedMessage,
-				List<String> messageArgs,
-				String rootCause
-				) implements DeleteResponse {
-
-			
-			static Optional<DeleteResponse> from(JsonData json) {
-				try {
-					String code = json.at("/code").orElseThrow();
-					String type = json.at("/type").orElseThrow();
-					String title = json.at("/title").orElseThrow();
-					String description = json.at("/description").orElseThrow();
-					String unresolvedMessage = json.at("/unresolvedMessage").orElseThrow();
-					String messageArgs = json.at("/messageArgs/0").orElseThrow();
-					String rootCause = json.at("/rootCause").orElseThrow();
-					
-					return Optional.of(new DeleteError(code, type, title, description, unresolvedMessage, List.of(messageArgs), rootCause));
-				} catch (NoSuchElementException e) {
-					// return empty so that we throw an unexpected response Exception.
-					return Optional.empty();
-				}
-			}
-		}
-
 		private static DeleteResponse from(String jsonString) {
 			JsonData json = JsonData.from(jsonString);
 			
 			return DeleteSuccess.from(json)
-					.or(()->DeleteError.from(json))
+					.map(ds->(DeleteResponse)ds)
+					.or(()->AemError.from(json))
 					.orElseThrow(()->new IllegalArgumentException("Unexpected response returned from AEM:\n" + jsonString))
 					;
 		}
@@ -87,7 +87,7 @@ public class FormsAndDocumentsClient {
 	public DeleteResponse delete(String target) {
 		try {
 			Response response = contentManagerClient.multipartPayloadBuilder()
-													.add("assetPaths", target)
+													.add("assetPaths", actualLocation(target))
 													.add("_charset_", "UTF-8")
 													.queryParam("func", "deleteAssets")
 													.build()
@@ -99,12 +99,42 @@ public class FormsAndDocumentsClient {
 		}
 	}
 
-	public record PreviewResponse(String fileId) {};
+	public static sealed interface PreviewResponse {
+		public record PreviewSuccess(String fileId) implements PreviewResponse {
+	
+			public static Optional<PreviewSuccess> from(JsonData json) {
+				return json.at("/fileId").map(PreviewSuccess::new);
+			}
+		}
+
+		public static PreviewResponse from(String jsonString) {
+			JsonData json = JsonData.from(jsonString);
+
+			return PreviewSuccess.from(json)
+					.map(ps->(PreviewResponse)ps)
+					.or(()->AemError.from(json))
+					.orElseThrow(()->new IllegalArgumentException("Unexpected response returned from AEM:\n" + jsonString))
+					;
+		};
+	}
 	
 	// filename, file contents, target location
 	public PreviewResponse preview(String filename, byte[] content, String targetLocation) {
-		// TODO:  Implement this.
-		throw new UnsupportedOperationException("Not implemented yet.");
+		try {
+			Response response = contentManagerClient.multipartPayloadBuilder()
+													.queryParam("func", "uploadFormsPreview")
+													.queryParam("folderPath", actualLocation(targetLocation))
+													.queryParam("isIE", "false")
+													.add("filename", filename)
+													.add("file", content, ContentType.of("application/x-zip-compressed;filename=fidelity-of-0.0.1-SNAPSHOT.zip"))
+													.add("_charset_", "UTF-8")
+													.build()
+													.postToServer(ContentType.APPLICATION_JSON)
+													.orElseThrow(()->new FormsAndDocumentsException("Error while uploading file (" + filename + ")  to '" + actualLocation(targetLocation) + "'. No content was returned."));
+			return PreviewResponse.from(new String(response.data().readAllBytes()));
+		} catch (RestClientException | IOException | IllegalArgumentException e) {
+			throw new FormsAndDocumentsException("Error while uploading file (" + filename + ") to '" + actualLocation(targetLocation) + "'.", e);
+		}
 	}
 
 	public PreviewResponse preview(Path file, String targetLocation) {
@@ -115,11 +145,59 @@ public class FormsAndDocumentsClient {
 		}
 	}
 
-	public boolean upload(String fileId) {
-		// TODO:  Implement this.
-		throw new UnsupportedOperationException("Not implemented yet.");
+	public static sealed interface UploadResponse {
+		public static final class UploadSuccess implements UploadResponse {
+			private static final UploadSuccess INSTANCE = new UploadSuccess();	// Since this is just a placeholder. we'll make it a singleton.
+			static Optional<UploadSuccess> from(JsonData json) {
+				return json.at("/lastUploadedAssetPath").map(__->INSTANCE);
+			}
+		}
+
+		public static UploadResponse from(String jsonString) {
+			JsonData json = JsonData.from(jsonString);
+		
+			return UploadSuccess.from(json)
+					.map(ur->(UploadResponse)ur)
+					.or(()->AemError.from(json))
+					.orElseThrow(()->new IllegalArgumentException("Unexpected response returned from AEM:\n" + jsonString))
+					;
+		}
+	}
+
+	public UploadResponse upload(String fileId, String targetLocation) {
+		try {
+			Response response = contentManagerClient.multipartPayloadBuilder()
+													.add("_charset_", "UTF-8")
+													.queryParam("func", "uploadForms")
+													.queryParam("folderPath", actualLocation(targetLocation))
+													.queryParam("fileId", fileId)
+													.queryParam("uploadType", "assets")
+													.build()
+													.postToServer(ContentType.APPLICATION_JSON)
+													.orElseThrow(()->new FormsAndDocumentsException("Error while uploading fileId (" + fileId + ")  to '" + actualLocation(targetLocation) + "'. No content was returned."));
+			return UploadResponse.from(new String(response.data().readAllBytes()));
+		} catch (RestClientException | IOException | IllegalArgumentException e) {
+			throw new FormsAndDocumentsException("Error while uploading fileId (" + fileId + ") to '" + actualLocation(targetLocation) + "'.", e);
+		}
+	}
+
+	private String actualLocation(String targetLocation) {
+		return "/content/dam/formsanddocuments" + (targetLocation.isBlank() || targetLocation.startsWith("/") ? "" : "/") + targetLocation;
 	}
 	
+	public UploadResponse upload(Path file, String targetLocation) {
+		PreviewResponse previewResponse = preview(file, targetLocation);
+		
+		return switch(previewResponse) {
+			case PreviewSuccess previewSuccess -> upload(previewSuccess.fileId(), targetLocation); 
+			case AemError 		previewFailure -> previewFailure; 
+		};
+	}
+
+	public UploadResponse upload(Path file) {
+		return upload(file, "");
+	}
+
 	public boolean createFolder(String folderName) {
 		// TODO:  Implement this.
 		throw new UnsupportedOperationException("Not implemented yet.");
