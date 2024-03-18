@@ -5,6 +5,7 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.Optional;
 
 import com._4point.aem.package_manager.AemConfig.SimpleAemConfigBuilder;
@@ -30,6 +31,11 @@ public class FormsAndDocumentsClient {
 
 		public static final class DeleteSuccess implements DeleteResponse {
 			
+			private static Optional<DeleteResponse> from(JsonData json) {
+				Optional<String> requestStatus = json.at("/requestStatus");
+				return requestStatus.isPresent() ? Optional.of(DeleteSuccess.from(requestStatus.get())) : Optional.empty();
+			}
+
 			private static DeleteSuccess from(String requestStatusString) {
 				return switch (requestStatusString) {
 					case "success"->new DeleteSuccess();
@@ -47,21 +53,33 @@ public class FormsAndDocumentsClient {
 				List<String> messageArgs,
 				String rootCause
 				) implements DeleteResponse {
+
 			
+			static Optional<DeleteResponse> from(JsonData json) {
+				try {
+					String code = json.at("/code").orElseThrow();
+					String type = json.at("/type").orElseThrow();
+					String title = json.at("/title").orElseThrow();
+					String description = json.at("/description").orElseThrow();
+					String unresolvedMessage = json.at("/unresolvedMessage").orElseThrow();
+					String messageArgs = json.at("/messageArgs/0").orElseThrow();
+					String rootCause = json.at("/rootCause").orElseThrow();
+					
+					return Optional.of(new DeleteError(code, type, title, description, unresolvedMessage, List.of(messageArgs), rootCause));
+				} catch (NoSuchElementException e) {
+					// return empty so that we throw an unexpected response Exception.
+					return Optional.empty();
+				}
+			}
 		}
 
 		private static DeleteResponse from(String jsonString) {
 			JsonData json = JsonData.from(jsonString);
 			
-			Optional<String> requestStatus = json.at("/requestStatus");
-			if (requestStatus.isPresent()) {
-				return DeleteSuccess.from(requestStatus.get());
-			} else {
-				// Must be error
-				
-			}
-			// TODO Auto-generated method stub
-			return null;
+			return DeleteSuccess.from(json)
+					.or(()->DeleteError.from(json))
+					.orElseThrow(()->new IllegalArgumentException("Unexpected response returned from AEM:\n" + jsonString))
+					;
 		}
 
 	}

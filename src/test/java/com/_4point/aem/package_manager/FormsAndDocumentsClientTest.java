@@ -9,12 +9,15 @@ import static org.junit.jupiter.api.Assertions.*;
 import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import com._4point.aem.package_manager.FormsAndDocumentsClient.DeleteResponse;
 import com._4point.aem.package_manager.FormsAndDocumentsClient.DeleteResponse.DeleteError;
 import com._4point.aem.package_manager.FormsAndDocumentsClient.DeleteResponse.DeleteSuccess;
+import com._4point.aem.package_manager.FormsAndDocumentsClient.FormsAndDocumentsException;
 import com._4point.aem.package_manager.rest_client.RestClient.ContentType;
+import com._4point.testing.matchers.javalang.ExceptionMatchers;
 import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
 import com.github.tomakehurst.wiremock.junit5.WireMockTest;
 
@@ -52,10 +55,15 @@ class FormsAndDocumentsClientTest {
 
 	@Test
 	void testDelete_Failure() {
+		// Given
 		String targetFolder = "/content/dam/formsanddocuments/fidelity-of";
 		String response = DELETE_FAILURE_RESPONSE;
 		stubForDelete(targetFolder, response);
+
+		// When
 		DeleteResponse result = underTest.delete(targetFolder);
+
+		// Then - should contain that error was returned and text from the response.
 		assertThat(result, instanceOf(DeleteError.class));
 		DeleteError deleteError = (DeleteError) result;
 		assertAll(
@@ -69,21 +77,62 @@ class FormsAndDocumentsClientTest {
 				);
 	}
 
+
+	@Test
+	void testDelete_UnexpectedRequestStatus() {
+		// Given
+		String unexpectedStatus = "unexpected";
+		String targetFolder = "/content/dam/formsanddocuments/fidelity-of";
+		String response = "{\"requestStatus\":\"" + unexpectedStatus + "\"}";
+		stubForDelete(targetFolder, response);
+		
+		// When
+		FormsAndDocumentsException ex = assertThrows(FormsAndDocumentsException.class, ()->underTest.delete(targetFolder));
+
+		// Then - should contain that error was returned and text from the response.
+		assertAll(
+				()->assertThat(ex, ExceptionMatchers.exceptionMsgContainsAll("Error while deleting folder", targetFolder)),
+				()->assertThat(ex.getCause(), ExceptionMatchers.exceptionMsgContainsAll("Unexpected requestStatus returned from AEM", unexpectedStatus))
+				);
+	}
+
+	@Test
+	void testDelete_UnexpectedResponse() {
+		// Given
+		String targetFolder = "/content/dam/formsanddocuments/fidelity-of";
+		String response = "{ \"foo\": \"bar\" }";
+		stubForDelete(targetFolder, response);
+		
+		// When
+		FormsAndDocumentsException ex = assertThrows(FormsAndDocumentsException.class, ()->underTest.delete(targetFolder));
+		
+		// Then - should contain that error was returned and text from the response.
+		assertAll(
+				()->assertThat(ex, ExceptionMatchers.exceptionMsgContainsAll("Error while deleting folder", targetFolder)),
+				()->assertThat(ex.getCause(), ExceptionMatchers.exceptionMsgContainsAll("Unexpected response returned from AEM", response))
+				);
+
+	}
+	
+	@Disabled("Not yet implemented")
 	@Test
 	void testPreviewStringByteArrayString() {
 		fail("Not yet implemented");
 	}
 
+	@Disabled("Not yet implemented")
 	@Test
 	void testPreviewPathString() {
 		fail("Not yet implemented");
 	}
 
+	@Disabled("Not yet implemented")
 	@Test
 	void testUpload() {
 		fail("Not yet implemented");
 	}
 
+	@Disabled("Not yet implemented")
 	@Test
 	void testCreateFolder() {
 		fail("Not yet implemented");
