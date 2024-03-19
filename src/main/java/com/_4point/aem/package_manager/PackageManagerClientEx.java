@@ -2,6 +2,8 @@ package com._4point.aem.package_manager;
 
 import java.nio.file.Path;
 import java.util.List;
+import java.util.function.Consumer;
+import java.util.function.Predicate;
 
 import com._4point.aem.package_manager.PackageManagerClient.PackageManagerException;
 
@@ -86,6 +88,15 @@ public class PackageManagerClientEx {
 	}
 
 	/**
+	 * Uninstall a package.
+	 * 
+	 * @param pkg Package to be uninstalled
+	 */
+	public void uninstallPackage(ListResponse.Package pkg) {
+		uninstallPackage(pkg.group(), pkg.downloadName());
+	}
+
+	/**
 	 * Delete a package.
 	 * 
 	 * @param group group name of the package (as determined in the pom.xml used to create the package)
@@ -99,6 +110,25 @@ public class PackageManagerClientEx {
 	}
 	
 	/**
+	 * Delete a package.
+	 * 
+	 * @param pkg Package to be deleted
+	 */
+	public void deletePackage(ListResponse.Package pkg) {
+		deletePackage(pkg.group(), pkg.downloadName());
+	}
+	
+	/**
+	 * Uninstall and delete a package
+	 * 
+	 * @param pkg Package to be uninstalled and deleted
+	 */
+	public void uninstallAndDeletePackage(ListResponse.Package pkg) {
+		uninstallPackage(pkg);
+		deletePackage(pkg);
+	}
+
+	/**
 	 * Create a PackageManagerClientEs object from a PackageManagerClient object.
 	 * 
 	 * @param client
@@ -106,5 +136,29 @@ public class PackageManagerClientEx {
 	 */
 	static PackageManagerClientEx from(PackageManagerClient client) {
 		return new PackageManagerClientEx(client);
+	}
+
+	/**
+	 * Delete packages that match a certain condition (possibly uninstalling them first).
+	 * 
+	 * @param condition	Predicate that indicates which packages to be (maybe uninstalled and) deleted.
+	 * @param uninstallFirst Boolean indicating whether to uninstall before deleting.
+	 */
+	public void deletePackages(Predicate<? super ListResponse.Package> condition, boolean uninstallFirst) {
+		Consumer<? super ListResponse.Package> terminatingFn = uninstallFirst ?  this::uninstallAndDeletePackage
+																			  :  this::deletePackage;
+		this.listPackages()
+			.stream()
+			.filter(condition)
+			.forEach(terminatingFn)
+			;
+	}
+	/**
+	 * Uninstall and delete 
+	 * 
+	 * @param condition	Predicate that indicates which packages to be uninstalled and deleted.
+	 */
+	public void uninstallAndDeletePackages(Predicate<ListResponse.Package> condition) {
+		deletePackages(condition, true);
 	}
 }

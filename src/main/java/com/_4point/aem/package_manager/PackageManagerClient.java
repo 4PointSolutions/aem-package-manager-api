@@ -138,7 +138,7 @@ public class PackageManagerClient {
 													  .postToServer(ContentType.APPLICATION_JSON);
 			return CommandResponse.from(JsonData.from(new String(fromServer.orElseThrow().data().readAllBytes())));
 		} catch (RestClientException | IOException e) {
-			throw new PackageManagerException("Error while uninstalling pacakge(" + packageFilename + ") from group '" + group + "'.", e);
+			throw new PackageManagerException("Error while performing '" + command + "' on package '" + packageFilename + "' from group '" + group + "'.", e);
 		}
 	}
 

@@ -102,4 +102,38 @@ class PackageManagerClientExTest {
 		assertThat(ex, ExceptionMatchers.exceptionMsgContainsAll("Error returned", "Delete Package", "failure"));
 	}
 
+	@Test
+	void testDeletePackages_Success() throws Exception {
+		stubForListPackagesSuccess();
+		stubForUninstallPackageSuccess();
+		stubForDeletePackageSuccess();
+		underTest.deletePackages(pkg->GROUP.equals(pkg.group()), true);
+	}
+
+	@Test
+	void testDeletePackages_FailureInList() throws Exception {
+		stubForListPackagesFailure();
+		PackageManagerException ex = assertThrows(PackageManagerException.class, ()->underTest.deletePackages(pkg->GROUP.equals(pkg.group()), true));
+		// Should contain that error was returned, operation name and text from the response.
+		assertThat(ex, ExceptionMatchers.exceptionMsgContainsAll("Error returned", "List Packages", "Internal Server Error"));
+	}
+
+	@Test
+	void testDeletePackages_FailureInUninstall() throws Exception {
+		stubForListPackagesSuccess();
+		stubForUninstallPackageFailure();
+		PackageManagerException ex = assertThrows(PackageManagerException.class, ()->underTest.deletePackages(pkg->GROUP.equals(pkg.group()), true));
+		// Should contain that error was returned, operation name and text from the response.
+		assertThat(ex, ExceptionMatchers.exceptionMsgContainsAll("Error returned", "Uninstall Package", "no package"));
+	}
+
+	@Test
+	void testDeletePackages_FailureInDelete() throws Exception {
+		stubForListPackagesSuccess();
+		stubForUninstallPackageSuccess();
+		stubForDeletePackageFailure();
+		PackageManagerException ex = assertThrows(PackageManagerException.class, ()->underTest.deletePackages(pkg->GROUP.equals(pkg.group()), true));
+		// Should contain that error was returned, operation name and text from the response.
+		assertThat(ex, ExceptionMatchers.exceptionMsgContainsAll("Error returned", "Delete Package", "failure"));
+	}
 }
