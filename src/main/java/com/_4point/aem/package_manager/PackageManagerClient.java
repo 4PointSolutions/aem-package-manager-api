@@ -3,6 +3,7 @@ package com._4point.aem.package_manager;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Optional;
+import java.util.function.Consumer;
 
 import com._4point.aem.package_manager.AemConfig.SimpleAemConfigBuilder;
 import com._4point.aem.package_manager.rest_client.RestClient;
@@ -29,11 +30,13 @@ public class PackageManagerClient {
 	private final RestClient listAllPackagesClient;
 	private final UntargettedRestClient commandPackageClient;
 	private final RestClient uploadPackageClient;
+	private final Logger logger;
 	
-	private PackageManagerClient(AemConfig aemConfig) {
+	private PackageManagerClient(AemConfig aemConfig, Logger logger) {
 		this.listAllPackagesClient = new JerseyRestClient(aemConfig, "/crx/packmgr/service.jsp");
 		this.commandPackageClient = new JerseyUntargettedRestClient(aemConfig);
-		this.uploadPackageClient = new JerseyRestClient(aemConfig, "/crx/packmgr/service/.json");;
+		this.uploadPackageClient = new JerseyRestClient(aemConfig, "/crx/packmgr/service/.json");
+		this.logger = logger;;
 	}
 	
 	// List all packages
@@ -46,12 +49,15 @@ public class PackageManagerClient {
 	 */
 	public ListResponse listPackages() {
 		try {
+			logger.log("Listing packages");
 			Optional<Response> fromServer = this.listAllPackagesClient.getRequestBuilder()
 									  .queryParam("cmd", "ls")
 									  .build()
 									  .getFromServer(ContentType.of("text/plain"));	// Not sure why AEM returnes "text/plain" when it is clearly XML.
 			
-			return ListResponse.from(XmlDocument.initializeXmlDoc(fromServer.orElseThrow().data().readAllBytes()));
+			ListResponse listResponse = ListResponse.from(XmlDocument.initializeXmlDoc(fromServer.orElseThrow().data().readAllBytes()));
+			logger.log(()->"  Found" + listResponse.packages().size() + " packages");
+			return listResponse;
 		} catch (RestClientException | IOException e) {
 			throw new PackageManagerException("Error while listing packages.", e);
 		}
@@ -68,13 +74,16 @@ public class PackageManagerClient {
 	 */
 	public CommandResponse uploadPackage(String packageFilename, Path file) {
 		try {
+			logger.log(()->"Uploading Package '" + packageFilename + "'");
 			Optional<Response> fromServer = this.uploadPackageClient.multipartPayloadBuilder()
 							.add("cmd", "upload")
 							.add("force", "true")
 							.add("package", file, ContentType.APPLICATION_OCTET_STREAM)
 							.build()
 							.postToServer(ContentType.APPLICATION_JSON);
-			return CommandResponse.from(JsonData.from(new String(fromServer.orElseThrow().data().readAllBytes())));
+			CommandResponse commandResponse = CommandResponse.from(JsonData.from(new String(fromServer.orElseThrow().data().readAllBytes())));
+			logger.log(()->"  Package " + (commandResponse.success() ? "uploaded successfully" : "not uploaded"));
+			return commandResponse;
 		} catch (RestClientException | IOException e) {
 			throw new PackageManagerException("Error while uploading pacakge(" + packageFilename + ").", e);
 		}
@@ -131,12 +140,15 @@ public class PackageManagerClient {
 
 	private CommandResponse executePackageCommand(String command, String group, String packageFilename) {
 		try {
+			logger.log(()->"Executing " + command + " package on '" + packageFilename + "'");
 			RestClient restClient = this.commandPackageClient.target("/crx/packmgr/service/.json/etc/packages/" + group + "/" + packageFilename);
 			Optional<Response> fromServer = restClient.multipartPayloadBuilder()
 													  .add("cmd", command)
 													  .build()
 													  .postToServer(ContentType.APPLICATION_JSON);
-			return CommandResponse.from(JsonData.from(new String(fromServer.orElseThrow().data().readAllBytes())));
+			CommandResponse commandResponse = CommandResponse.from(JsonData.from(new String(fromServer.orElseThrow().data().readAllBytes())));
+			logger.log(()->"  " + command + " completed " + (commandResponse.success() ? "successfully" : "unsuccessfully") );
+			return commandResponse;
 		} catch (RestClientException | IOException e) {
 			throw new PackageManagerException("Error while performing '" + command + "' on package '" + packageFilename + "' from group '" + group + "'.", e);
 		}
@@ -158,6 +170,7 @@ public class PackageManagerClient {
 	 */
 	public static class PackageManagerBuilder {
 		private final SimpleAemConfigBuilder aemConfigBuilder = new SimpleAemConfigBuilder();
+		private Logger logger = new Logger.NoOpLogger();
 		
 		/**
 		 * Set the machine name where the AEM instance resides.
@@ -217,12 +230,25 @@ public class PackageManagerClient {
 		}
 
 		/**
+		 * Accepts a Consumer that will be used to publish logging messages.
+		 * 
+		 * If this is not supplied, then no logging will occur,
+		 * 
+		 * @param msgConsumer
+		 * @return
+		 */
+		public PackageManagerBuilder logger(Consumer<? super String> msgConsumer) {
+			this.logger = new Logger.PassThroughLogger(msgConsumer);
+			return this;
+		}
+		
+		/**
 		 * Build a PackageManagerClient instance.
 		 * 
 		 * @return new PackageManagerClient instance
 		 */
 		public PackageManagerClient build() {
-			return new PackageManagerClient(aemConfigBuilder.build());
+			return new PackageManagerClient(aemConfigBuilder.build(), logger);
 		}
 
 		/**
@@ -231,7 +257,7 @@ public class PackageManagerClient {
 		 * @return new PackageManagerClientEx instance
 		 */
 		public PackageManagerClientEx buildEx() {
-			return PackageManagerClientEx.from(new PackageManagerClient(aemConfigBuilder.build()));
+			return PackageManagerClientEx.from(new PackageManagerClient(aemConfigBuilder.build(), logger));
 		}
 	}
 	

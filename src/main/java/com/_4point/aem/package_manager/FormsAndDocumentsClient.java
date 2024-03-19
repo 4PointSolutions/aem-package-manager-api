@@ -6,6 +6,7 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
+import java.util.function.Consumer;
 
 import com._4point.aem.package_manager.AemConfig.SimpleAemConfigBuilder;
 import com._4point.aem.package_manager.FormsAndDocumentsClient.PreviewResponse.PreviewSuccess;
@@ -25,10 +26,12 @@ import com._4point.aem.package_manager.rest_client.jersey.JerseyRestClient;
 public class FormsAndDocumentsClient {
 	private final RestClient contentManagerClient;
 	private final JerseyRestClient formsAndDocumentsClient;
+	private final Logger logger;
 	
-	private FormsAndDocumentsClient(AemConfig aemConfig) {
+	private FormsAndDocumentsClient(AemConfig aemConfig, Logger logger) {
 		this.contentManagerClient = new JerseyRestClient(aemConfig, "/libs/fd/fm/content/manage.json"); // ?func=deleteAssets
-		this.formsAndDocumentsClient = new JerseyRestClient(aemConfig, "/content/dam/formsanddocuments"); 
+		this.formsAndDocumentsClient = new JerseyRestClient(aemConfig, "/content/dam/formsanddocuments");
+		this.logger = logger; 
 	}
 	
 	
@@ -275,6 +278,7 @@ public class FormsAndDocumentsClient {
 	 */
 	public static class FormsAndDocumentsBuilder {
 		private final SimpleAemConfigBuilder aemConfigBuilder = new SimpleAemConfigBuilder();
+		private Logger logger = new Logger.NoOpLogger();
 		
 		/**
 		 * Set the machine name where the AEM instance resides.
@@ -332,6 +336,19 @@ public class FormsAndDocumentsClient {
 			aemConfigBuilder.useSsl(useSsl);
 			return this;
 		}
+		
+		/**
+		 * Accepts a Consumer that will be used to publish logging messages.
+		 * 
+		 * If this is not supplied, then no logging will occur,
+		 * 
+		 * @param msgConsumer
+		 * @return
+		 */
+		public FormsAndDocumentsBuilder logger(Consumer<? super String> msgConsumer) {
+			this.logger = new Logger.PassThroughLogger(msgConsumer);
+			return this;
+		}
 
 		/**
 		 * Build a FormsAndDocumentsClient instance.
@@ -339,7 +356,7 @@ public class FormsAndDocumentsClient {
 		 * @return new FormsAndDocumentsClient instance
 		 */
 		public FormsAndDocumentsClient build() {
-			return new FormsAndDocumentsClient(aemConfigBuilder.build());
+			return new FormsAndDocumentsClient(aemConfigBuilder.build(), logger);
 		}
 
 		/**
@@ -348,7 +365,7 @@ public class FormsAndDocumentsClient {
 		 * @return new FormsAndDocumentsClientEx instance
 		 */
 		public FormsAndDocumentsClientEx buildEx() {
-			return FormsAndDocumentsClientEx.from(new FormsAndDocumentsClient(aemConfigBuilder.build()));
+			return FormsAndDocumentsClientEx.from(new FormsAndDocumentsClient(aemConfigBuilder.build(), logger));
 		}
 	}
 	

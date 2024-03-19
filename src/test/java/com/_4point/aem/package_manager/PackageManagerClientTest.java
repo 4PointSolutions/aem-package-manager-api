@@ -8,6 +8,8 @@ import static org.junit.jupiter.api.Assertions.*;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -53,6 +55,19 @@ class PackageManagerClientTest {
 	void testListPackages_Success() throws Exception {
 		stubForListPackagesSuccess();
 		assertEquals(322, underTest.listPackages().packages().size());
+	}
+
+	@Test
+	void testListPackages_SuccessWithLogging(WireMockRuntimeInfo wmRuntimeInfo) throws Exception {
+		List<String> listOfLogs = new ArrayList<>();
+		PackageManagerClient underTestWithLogging = PackageManagerClient.builder().port(wmRuntimeInfo.getHttpPort())
+				 																  .logger(listOfLogs::add)
+				 																  .build();
+		stubForListPackagesSuccess();
+		assertEquals(322, underTestWithLogging.listPackages().packages().size());
+		
+		// Validate logs
+		assertEquals(2, listOfLogs.size());
 	}
 
 	@Test
