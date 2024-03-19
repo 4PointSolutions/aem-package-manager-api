@@ -48,7 +48,7 @@ class FormsAndDocumentsClientTest {
 			}\
 			""";
 	
-	private static final String PREVIEW_RESPONSE = """
+	static final String PREVIEW_RESPONSE = """
 			{
 				"fileId": "30226661338789",
 				"fileName": "sample-of-0.0.1-SNAPSHOT.zip",
@@ -78,7 +78,7 @@ class FormsAndDocumentsClientTest {
 			}\
 			""";
 
-	private static final String PREVIEW_FAILURE = """
+	static final String PREVIEW_FAILURE = """
 			{
 			    "code": "ALC-FMG-001-001",
 			    "type": "error",
@@ -90,13 +90,13 @@ class FormsAndDocumentsClientTest {
 			}\
 			""";
 	
-	private static final String UPLOAD_RESPONSE = """
+	static final String UPLOAD_RESPONSE = """
 			{
 				"lastUploadedAssetPath": "/content/dam/formsanddocuments/fidelity-of/resp_family_fr.xdp"
 			}\
 			""";
 	
-	private static final String UPLOAD_FAILURE = """
+	static final String UPLOAD_FAILURE = """
 			{
 			    "code": "ALC-FMG-001-001",
 			    "type": "error",
@@ -305,7 +305,7 @@ class FormsAndDocumentsClientTest {
 		fail("Not yet implemented");
 	}
 
-	void stubForDelete(String targetFolder, String response) {
+	static void stubForDelete(String targetFolder, String response) {
 		stubFor(post(urlPathEqualTo("/libs/fd/fm/content/manage.json"))
 				.withQueryParam("func", equalTo("deleteAssets"))
 				.withMultipartRequestBody(aMultipart("assetPaths").withBody(equalTo("/content/dam/formsanddocuments/" + targetFolder)))
@@ -314,7 +314,7 @@ class FormsAndDocumentsClientTest {
 					));
 	}
 
-	void stubForPreview(String filename, String response) {
+	static void stubForPreview(String filename, String response) {
 		stubFor(post(urlPathEqualTo("/libs/fd/fm/content/manage.json"))
 				.withQueryParam("func", equalTo("uploadFormsPreview"))
 				.withQueryParam("folderPath", containing("/content/dam/formsanddocuments"))
@@ -327,7 +327,7 @@ class FormsAndDocumentsClientTest {
 					));
 	}
 
-	void stubForUpload(String fileId, String response) {
+	static void stubForUpload(String fileId, String response) {
 		stubFor(post(urlPathEqualTo("/libs/fd/fm/content/manage.json"))
 				.withQueryParam("func", equalTo("uploadForms"))
 				.withQueryParam("folderPath", containing("/content/dam/formsanddocuments"))
