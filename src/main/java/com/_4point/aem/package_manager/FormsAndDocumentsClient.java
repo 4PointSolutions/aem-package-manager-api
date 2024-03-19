@@ -108,6 +108,7 @@ public class FormsAndDocumentsClient {
 	 */
 	public DeleteResponse delete(String target) {
 		try {
+			logger.log(()->"Deleting '" + target + "'");
 			Response response = contentManagerClient.multipartPayloadBuilder()
 													.add("assetPaths", actualLocation(target))
 													.add("_charset_", "UTF-8")
@@ -115,7 +116,9 @@ public class FormsAndDocumentsClient {
 													.build()
 													.postToServer(ContentType.APPLICATION_JSON)
 													.orElseThrow(()->new FormsAndDocumentsException("Error while deleting folder (" + target + "). No content was returned."));
-			return DeleteResponse.from(new String(response.data().readAllBytes()));
+			DeleteResponse deleteResponse = DeleteResponse.from(new String(response.data().readAllBytes()));
+			logger.log(()->"  Delete " + (deleteResponse instanceof DeleteResponse.DeleteSuccess ? "successfully completed" : "was unsuccessful"));
+			return deleteResponse;
 		} catch (RestClientException | IOException | IllegalArgumentException e) {
 			throw new FormsAndDocumentsException("Error while deleting folder (" + target + ").", e);
 		}
@@ -153,6 +156,7 @@ public class FormsAndDocumentsClient {
 	 */
 	public PreviewResponse preview(String filename, byte[] content, String targetLocation) {
 		try {
+			logger.log(()->"Uploading filename '" + filename + "'" + (targetLocation.isBlank() ? "" : "'" + targetLocation + "'"));
 			Response response = contentManagerClient.multipartPayloadBuilder()
 													.queryParam("func", "uploadFormsPreview")
 													.queryParam("folderPath", actualLocation(targetLocation))
@@ -163,7 +167,9 @@ public class FormsAndDocumentsClient {
 													.build()
 													.postToServer(ContentType.APPLICATION_JSON)
 													.orElseThrow(()->new FormsAndDocumentsException("Error while uploading file (" + filename + ")  to '" + actualLocation(targetLocation) + "'. No content was returned."));
-			return PreviewResponse.from(new String(response.data().readAllBytes()));
+			PreviewResponse previewResponse = PreviewResponse.from(new String(response.data().readAllBytes()));
+			logger.log(()->"  upload " + (previewResponse instanceof PreviewResponse.PreviewSuccess result ? "successfully completed with fileId '" + result.fileId() + "'"  : "was unsuccessful"));
+			return previewResponse;
 		} catch (RestClientException | IOException | IllegalArgumentException e) {
 			throw new FormsAndDocumentsException("Error while uploading file (" + filename + ") to '" + actualLocation(targetLocation) + "'.", e);
 		}
@@ -217,6 +223,7 @@ public class FormsAndDocumentsClient {
 	 */
 	public UploadResponse upload(String fileId, String targetLocation) {
 		try {
+			logger.log(()->"Uploading fileId '" + fileId + "'" + (targetLocation.isBlank() ? "" : "'" + targetLocation + "'"));
 			Response response = contentManagerClient.multipartPayloadBuilder()
 													.add("_charset_", "UTF-8")
 													.queryParam("func", "uploadForms")
@@ -226,7 +233,9 @@ public class FormsAndDocumentsClient {
 													.build()
 													.postToServer(ContentType.APPLICATION_JSON)
 													.orElseThrow(()->new FormsAndDocumentsException("Error while uploading fileId (" + fileId + ")  to '" + actualLocation(targetLocation) + "'. No content was returned."));
-			return UploadResponse.from(new String(response.data().readAllBytes()));
+			UploadResponse uploadResponse = UploadResponse.from(new String(response.data().readAllBytes()));
+			logger.log(()->"  upload " + (uploadResponse instanceof UploadResponse.UploadSuccess ? "successfully completed" : "was unsuccessful"));
+			return uploadResponse;
 		} catch (RestClientException | IOException | IllegalArgumentException e) {
 			throw new FormsAndDocumentsException("Error while uploading fileId (" + fileId + ") to '" + actualLocation(targetLocation) + "'.", e);
 		}

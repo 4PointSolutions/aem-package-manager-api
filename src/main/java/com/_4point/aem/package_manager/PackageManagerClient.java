@@ -56,7 +56,7 @@ public class PackageManagerClient {
 									  .getFromServer(ContentType.of("text/plain"));	// Not sure why AEM returnes "text/plain" when it is clearly XML.
 			
 			ListResponse listResponse = ListResponse.from(XmlDocument.initializeXmlDoc(fromServer.orElseThrow().data().readAllBytes()));
-			logger.log(()->"  Found" + listResponse.packages().size() + " packages");
+			logger.log(()->"  Found " + listResponse.packages().size() + " packages");
 			return listResponse;
 		} catch (RestClientException | IOException e) {
 			throw new PackageManagerException("Error while listing packages.", e);
