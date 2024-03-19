@@ -20,7 +20,7 @@ import com._4point.aem.package_manager.FormsAndDocumentsClient.UploadResponse;
 
 @Disabled("This is an Integration test.  It assumes that AEM is running on localhost:4502 with default credentials.")
 @TestMethodOrder(OrderAnnotation.class)
-class FormsAndDocumentsIT {
+class FormsAndDocumentsClientIT {
 	private static final Path RESOURCES_DIR = Path.of("src", "test", "resources");
 	private static final Path SAMPLE_DATA_DIR = RESOURCES_DIR.resolve("SampleData");
 
