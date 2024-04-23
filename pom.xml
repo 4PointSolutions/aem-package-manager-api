@@ -6,17 +6,48 @@
 	<artifactId>aem-package-manager-api</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<name>API for performing operations in AEM's Package Manager</name>
+	<description>A library for performing AEM operations remotely.</description>
+	<url>https://github.com/4PointSolutions/aem-package-manager-api</url>
+	<inceptionYear>2024</inceptionYear>
+
+	<licenses>
+		<license>
+			<name>The Apache License, Version 2.0</name>
+			<url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+		</license>
+	</licenses>
+
+	<organization>
+		<name>4Point Solutions</name>
+		<url>https://www.4point.com</url>
+	</organization>
+	<developers>
+		<developer>
+			<name>4Point Solutions</name>
+			<email>open.source@4point.com</email>
+			<organization>4Point Solutions Ltd.</organization>
+			<organizationUrl>https://www.4point.com</organizationUrl>
+		</developer>
+	</developers>
 
 	<properties>
 		<java.version>21</java.version>
 		<maven.compiler.source>${java.version}</maven.compiler.source>
 		<maven.compiler.target>${java.version}</maven.compiler.target>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
 		<!-- Plugin Dependencies -->
 		<maven-surefire-plugin.version>3.0.0-M7</maven-surefire-plugin.version>
+		<maven-gpg-plugin.version>3.0.1</maven-gpg-plugin.version>
+		<maven-source-plugin.version>3.2.1</maven-source-plugin.version>
+		<maven-javadoc-plugin.version>3.3.1</maven-javadoc-plugin.version>
+		<central-publishing-maven-plugin.version>0.4.0</central-publishing-maven-plugin.version>
+		<jreleaser-plugin.version>1.11.0</jreleaser-plugin.version>
+
 		<!-- Project Dependencies -->
 		<jersey.version>3.1.5</jersey.version>
 		<jackson.version>2.16.1</jackson.version>
+
 		<!-- Testing Dependencies -->
 		<junit.version>5.10.1</junit.version>
 		<mockito.version>5.11.0</mockito.version>
@@ -26,10 +57,15 @@
 	</properties>
 
 	<distributionManagement>
-		<repository>
+		<snapshotRepository>
 			<id>github</id>
 			<name>4Point Solutions FluentFormsAPI Apache Maven Packages</name>
 			<url>https://maven.pkg.github.com/4PointSolutions/aem-package-manager-api</url>
+		</snapshotRepository>
+		<repository>
+			<id>localStaging</id>
+			<name>Local Staging Directory</name>
+			<url>file:./target/staging-deploy</url>
 		</repository>
 	</distributionManagement>
 
@@ -44,8 +80,142 @@
 	</repositories>
 
 	<scm>
+		<connection>scm:git:https://github.com/4PointSolutions/aem-package-manager-api.git</connection>
 		<developerConnection>scm:git:https://github.com/4PointSolutions/aem-package-manager-api.git</developerConnection>
+		<url>https://github.com/4PointSolutions/aem-package-manager-api</url>
+		<tag>HEAD</tag>
 	</scm>
+
+	<profiles>
+		<profile>
+			<!-- Profile for creating a "full" release (with ssigned versions of sources and javadocs) -->
+			<id>full</id>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-gpg-plugin</artifactId>
+						<version>${maven-gpg-plugin.version}</version>
+						<executions>
+							<execution>
+								<id>sign-artifacts</id>
+								<phase>verify</phase>
+								<goals>
+									<goal>sign</goal>
+								</goals>
+								<configuration>
+									<gpgArguments>
+										<arg>--pinentry-mode</arg>
+										<arg>loopback</arg>
+									</gpgArguments>
+								</configuration> 
+							</execution>
+						</executions>
+					</plugin>
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-source-plugin</artifactId>
+						<version>${maven-source-plugin.version}</version>
+						<executions>
+							<execution>
+								<id>attach-sources</id>
+								<goals>
+									<goal>jar-no-fork</goal>
+								</goals>
+							</execution>
+						</executions>
+					</plugin>
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-javadoc-plugin</artifactId>
+						<version>${maven-javadoc-plugin.version}</version>
+						<configuration>
+							<encoding>UTF-8</encoding>
+						</configuration>
+						<executions>
+							<execution>
+								<id>attach-javadocs</id>
+								<goals>
+									<goal>jar</goal>
+								</goals>
+							</execution>
+						</executions>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
+		<profile>
+			<!-- Profile for releasing code to Maven Central -->
+			<id>release</id>
+			<build>
+				<plugins>
+					<!--
+					<plugin>
+						<groupId>org.sonatype.central</groupId>
+						<artifactId>central-publishing-maven-plugin</artifactId>
+						<version>${central-publishing-maven-plugin.version}</version>
+						<extensions>true</extensions>
+						<configuration>
+							<publishingServerId>central</publishingServerId>
+							<tokenAuth>true</tokenAuth>
+						</configuration>
+					</plugin>
+					-->
+					<plugin>
+						<groupId>org.jreleaser</groupId>
+						<artifactId>jreleaser-maven-plugin</artifactId>
+						<version>${jreleaser-plugin.version}</version>
+						<inherited>false</inherited>
+						<configuration>
+							<jreleaser>
+								<release>
+									<github>
+										<owner>4PointSolutions</owner>
+										<overwrite>true</overwrite>
+									</github>
+								</release>
+								<files>
+									<globs>
+										<glob>
+											<pattern>./target/staging-deploy/**/${project.artifactId}-${project.version}*.*</pattern>
+										</glob>
+									</globs>
+								</files>
+								<deploy>
+									<maven>
+										<github>
+											<githubPackages>
+												<active>ALWAYS</active>
+												<applyMavenCentralRules>false</applyMavenCentralRules>
+												<url>https://maven.pkg.github.com/4PointSolutions/aem-package-manager-api</url>
+												<stagingRepositories>
+													<stagingRepository>./target/staging-deploy</stagingRepository>
+												</stagingRepositories>
+											</githubPackages>
+										</github>
+										<nexus2>
+											<maven-central>
+												<active>NEVER</active>
+												<applyMavenCentralRules>true</applyMavenCentralRules>
+												<url>https://s01.oss.sonatype.org/service/local</url>
+												<stagingRepositories>
+													<stagingRepository>./target/staging-deploy</stagingRepository>
+												</stagingRepositories>
+												<sign>false</sign> <!-- Artifacts are already signed -->
+												<checksums>false</checksums> <!-- Artifacts are already checksummed --> 
+												<closeRepository>false</closeRepository>
+												<releaseRepository>false</releaseRepository>
+											</maven-central>
+										</nexus2>
+									</maven>
+								</deploy>
+							</jreleaser>
+						</configuration>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
+	</profiles>
 
 	<build>
 		<plugins>
