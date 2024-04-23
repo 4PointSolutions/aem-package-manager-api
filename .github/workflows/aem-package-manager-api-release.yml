@@ -1,0 +1,15 @@
+name: aem-package-manager-api automated release
+
+on:
+  workflow_dispatch:
+
+jobs:
+  call-maven:
+    uses: ./.github/workflows/aem-package-manager-api-maven.yml
+    with:
+      maven-goals: "deploy release:clean release:prepare release:perform jreleaser:full-release"
+      maven-profiles: full,release
+      maven-options: "--errors "
+    secrets:
+      GPG_PASSPHRASE: ${{ secrets.OPEN_SOURCE_AT_4POINT_GPG_PASSPHRASE }}
+      GPG_PASSPHRASE_PASSWORD: ${{ secrets.OPEN_SOURCE_AT_4POINT_GPG_PASSPHRASE_PASSWORD }}

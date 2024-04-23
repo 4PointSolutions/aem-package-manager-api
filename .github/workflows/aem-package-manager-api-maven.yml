@@ -1,0 +1,62 @@
+# This workflow will build a package using Maven and then publish it to GitHub packages when a release is created
+# For more information see: https://github.com/actions/setup-java/blob/main/docs/advanced-usage.md#apache-maven-with-a-settings-path
+
+name: aem-package-manager-api maven build
+
+on:
+  workflow_call:
+    inputs:
+      maven-goals:
+        required: true
+        type: string
+      maven-profiles:
+        required: true
+        type: string
+      maven-options:
+        type: string
+    secrets:
+      GPG_PASSPHRASE:
+        required: true
+        description: "GPG Private Key"
+      GPG_PASSPHRASE_PASSWORD:
+        required: true
+        description: "GPG Private Key Pass"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up JDK 21 for Shared Runner
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'zulu'
+        java-version: '21'
+        cache: 'maven'
+        server-id: github # Value of the distributionManagement/repository/id field of the pom.xml
+        settings-path: ${{ github.workspace }} # location for the settings.xml file
+
+    - name: Install gpg secret key
+      run: |
+        # Install gpg secret key
+        cat <(echo -e "${{ secrets.GPG_PASSPHRASE }}") | gpg --batch --import
+        # Verify gpg secret key
+        gpg --list-secret-keys --keyid-format LONG
+
+    - name: Configure Git user
+      run: |
+        git config user.email "actions@github.com"
+        git config user.name "GitHub Actions"
+
+    - name: Build and Publish to GitHub Packages Apache Maven
+      run: mvn 
+           --batch-mode 
+           --no-transfer-progress 
+           ${{ inputs.maven-options }} 
+           --define gpg.passphrase=${{ secrets.GPG_PASSPHRASE_PASSWORD }} 
+           --settings $GITHUB_WORKSPACE/settings.xml 
+           --activate-profiles ${{ inputs.maven-profiles }}
+           ${{ inputs.maven-goals }}
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
