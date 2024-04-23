@@ -38,6 +38,13 @@ public class FormsAndDocumentsClient {
 	/**
 	 * Represents an error returned from AEM
 	 * 
+	 * @param code AEM Error Code
+	 * @param type AEM Errror Type
+	 * @param title AEM Title
+	 * @param description AEM Description
+	 * @param unresolvedMessage AEM Unresolged Message
+	 * @param messageArgs AEM Message Arguments
+	 * @param rootCause	AEM Root Cause
 	 */
 	public record AemError(
 			String code,
@@ -74,6 +81,9 @@ public class FormsAndDocumentsClient {
 	 */
 	public static sealed interface DeleteResponse {
 
+		/**
+		 * A successful response to a Delete request
+		 */
 		public static final class DeleteSuccess implements DeleteResponse {
 			
 			private static Optional<DeleteResponse> from(JsonData json) {
@@ -128,6 +138,11 @@ public class FormsAndDocumentsClient {
 	 * Represents a response from asking AEM to preview a .zip.  It can be a PreviewSuccess or AemError.
 	 */
 	public static sealed interface PreviewResponse {
+		/**
+		 * A successful response from a Preview request
+		 * 
+		 * @param fileId
+		 */
 		public record PreviewSuccess(String fileId) implements PreviewResponse {
 	
 			private static Optional<PreviewSuccess> from(JsonData json) {
@@ -271,11 +286,24 @@ public class FormsAndDocumentsClient {
 		return upload(file, "");
 	}
 
+	/**
+	 * Create a folder.
+	 * 
+	 * <b>Not implemented yet</b>
+	 * 
+	 * @param folderName
+	 * @return
+	 */
 	public boolean createFolder(String folderName) {
 		// TODO:  Implement this.
 		throw new UnsupportedOperationException("Not implemented yet.");
 	}
 
+	/**
+	 * Returns a FormsAndDocumentsBuilder object.
+	 * 
+	 * @return FormsAndDocumentsBuilder object
+	 */
 	public static FormsAndDocumentsBuilder builder() {
 		return new FormsAndDocumentsBuilder();
 	}
@@ -292,8 +320,8 @@ public class FormsAndDocumentsClient {
 		/**
 		 * Set the machine name where the AEM instance resides.
 		 * 
-		 * @param serverName
-		 * @return
+		 * @param serverName server name String
+		 * @return builder
 		 */
 		public FormsAndDocumentsBuilder serverName(String serverName) {
 			aemConfigBuilder.serverName(serverName);
@@ -303,8 +331,8 @@ public class FormsAndDocumentsClient {
 		/**
 		 * Set the port that AEM is listening on
 		 * 
-		 * @param port
-		 * @return
+		 * @param port port number
+		 * @return builder
 		 */
 		public FormsAndDocumentsBuilder port(Integer port) {
 			aemConfigBuilder.port(port);
@@ -314,19 +342,19 @@ public class FormsAndDocumentsClient {
 		/**
 		 * Set the user that will be used to authenticate with the AEM server.
 		 * 
-		 * @param ussr
-		 * @return
+		 * @param user user name String
+		 * @return builder
 		 */
-		public FormsAndDocumentsBuilder user(String ussr) {
-			aemConfigBuilder.ussr(ussr);
+		public FormsAndDocumentsBuilder user(String user) {
+			aemConfigBuilder.ussr(user);
 			return this;
 		}
 
 		/**
 		 * Set the password that will be used to authenticate with the AEM server.
 		 * 
-		 * @param password
-		 * @return
+		 * @param password password String
+		 * @return builder
 		 */
 		public FormsAndDocumentsBuilder password(String password) {
 			aemConfigBuilder.password(password);
@@ -339,7 +367,7 @@ public class FormsAndDocumentsClient {
 		 * Note: The certificate used by the AEM server must be trusted.
 		 * 
 		 * @param useSsl true - use https connection, or false - use a regular http connection. 
-		 * @return
+		 * @return builder
 		 */
 		public FormsAndDocumentsBuilder useSsl(Boolean useSsl) {
 			aemConfigBuilder.useSsl(useSsl);
@@ -351,8 +379,8 @@ public class FormsAndDocumentsClient {
 		 * 
 		 * If this is not supplied, then no logging will occur,
 		 * 
-		 * @param msgConsumer
-		 * @return
+		 * @param msgConsumer Consumer that will log the message
+		 * @return builder
 		 */
 		public FormsAndDocumentsBuilder logger(Consumer<? super String> msgConsumer) {
 			this.logger = new Logger.PassThroughLogger(msgConsumer);

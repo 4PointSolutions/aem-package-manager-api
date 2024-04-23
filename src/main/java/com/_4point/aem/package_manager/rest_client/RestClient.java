@@ -21,6 +21,8 @@ public interface RestClient {
 	
 	/**
 	 * Represents a content type / mime type used to identify the content of a response.
+	 * 
+	 * @param contentType A String containing a Mime type (e.g. "application/pdf")
 	 */
 	public record ContentType(String contentType) {
 		public static final ContentType APPLICATION_PDF = ContentType.of("application/pdf");
@@ -52,8 +54,6 @@ public interface RestClient {
 		 * 
 		 * If the called service returns an error code, then this method throws a RestClientException.
 		 * 
-		 * @param target
-		 * @param payload
 		 * @param acceptContentType
 		 * @return
 		 * @throws RestClientException

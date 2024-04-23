@@ -21,9 +21,6 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
  * Internally it stores it as a String.
  *
  */
-/**
- * 
- */
 public class JsonData {
 	// ObjectMapper is expensive to create but is threadsafe, so only create it once.
 	// See: https://stackoverflow.com/questions/57670466/objectmapper-best-practice-for-thread-safety-and-performance
@@ -111,7 +108,7 @@ public class JsonData {
 	/**
 	 * Returns the JsonData of the JsonNode pointed at using a JsonPointer string.
 	 * 
-	 * @param jsonPtr
+	 * @param jsonDataPtr
 	 * @return
 	 */
 	public Optional<JsonData> subsetAt(JsonDataPointer jsonDataPtr) {
@@ -143,7 +140,7 @@ public class JsonData {
 	 * If the JsonData is Adaptive Form Json data (i.e. it has the Adaptive Form wrapper), then it will locate the node
 	 * using the "afBound" data node as the root node.  If that is not desired use the at(jsonPtr, false) call instead. 
 	 * 
-	 * @param jsonPtr
+	 * @param jsonDataPtr
 	 * @return
 	 */
 	public boolean hasNode(JsonDataPointer jsonDataPtr) {
@@ -185,7 +182,7 @@ public class JsonData {
 	/**
 	 * Inserts a property containing an object somewhere into the JSON
 	 * 
-	 * @param jsonPointer
+	 * @param jsonDataPointer
 	 * 		pointer to location where the property will be inserted
 	 * @param property
 	 * 		property to be inserted
@@ -201,7 +198,7 @@ public class JsonData {
 	/**
 	 * Inserts a property with a String value somewhere into the JSON
 	 * 
-	 * @param jsonPointer
+	 * @param jsonDataPointer
 	 * 		pointer to location where the property will be inserted
 	 * @param property
 	 * 		property to be inserted
